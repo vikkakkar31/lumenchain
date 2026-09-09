@@ -13,20 +13,22 @@ command -v go >/dev/null || { echo "Go is required" >&2; exit 1; }
 command -v git >/dev/null || { echo "Git is required" >&2; exit 1; }
 command -v python3 >/dev/null || { echo "Python 3 is required" >&2; exit 1; }
 
+# Ignite v28 checks this environment variable before showing its interactive
+# analytics consent prompt. This keeps GitHub Actions fully non-interactive.
+export DO_NOT_TRACK=true
+
 echo "Using $(go env GOVERSION)"
 echo "Building Ignite CLI ${IGNITE_VERSION} from source..."
 rm -rf "$TMP_DIR/ignite"
 git clone --depth 1 --branch "$IGNITE_VERSION" https://github.com/ignite/cli.git "$TMP_DIR/ignite"
 cd "$TMP_DIR/ignite"
 go build -o "$TMP_DIR/ignite-bin" ./ignite/cmd/ignite
-# Ignite asks for analytics consent even in CI. Explicitly decline it so the
-# bootstrap remains deterministic and non-interactive.
-printf 'n\n' | "$TMP_DIR/ignite-bin" version
+DO_NOT_TRACK=true "$TMP_DIR/ignite-bin" version
 
 IGNITE="$TMP_DIR/ignite-bin"
 echo "Scaffolding Cosmos SDK chain..."
 rm -rf "$TMP_DIR/lumenchain"
-printf 'n\n' | "$IGNITE" scaffold chain "$MODULE_PATH" --address-prefix lumen --no-module --skip-git --path "$TMP_DIR/lumenchain"
+DO_NOT_TRACK=true "$IGNITE" scaffold chain "$MODULE_PATH" --address-prefix lumen --no-module --skip-git --path "$TMP_DIR/lumenchain"
 
 # Fail before touching the checked-in chain if scaffolding did not produce a complete app.
 test -f "$TMP_DIR/lumenchain/app/app.go"
@@ -50,8 +52,8 @@ cp "$TMP_DIR/lumenchain/Makefile" "$CHAIN_DIR/"
 # Add the LumenChain-specific modules. Ignite wires them into app/app.go and creates
 # protobuf/module boilerplate that we can then implement incrementally.
 cd "$CHAIN_DIR"
-printf 'n\n' | "$IGNITE" scaffold module participation --dep bank,staking --require-registration
-printf 'n\n' | "$IGNITE" scaffold module rewards --dep bank,staking,distribution --require-registration
+DO_NOT_TRACK=true "$IGNITE" scaffold module participation --dep bank,staking --require-registration
+DO_NOT_TRACK=true "$IGNITE" scaffold module rewards --dep bank,staking,distribution --require-registration
 
 # LumenChain development defaults. These are deliberately test-only values.
 python3 - <<'PY'
