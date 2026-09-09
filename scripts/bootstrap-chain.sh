@@ -10,15 +10,27 @@ IGNITE_VERSION="v28.11.0"
 MODULE_PATH="github.com/vikkakkar31/lumenchain/chain"
 
 command -v go >/dev/null || { echo "Go is required" >&2; exit 1; }
+command -v python3 >/dev/null || { echo "Python 3 is required" >&2; exit 1; }
 
+echo "Using $(go env GOVERSION)"
 echo "Installing Ignite CLI ${IGNITE_VERSION}..."
 go install "github.com/ignite/cli/v28/ignite@${IGNITE_VERSION}"
 export PATH="$(go env GOPATH)/bin:$PATH"
+ignite version
 
 echo "Scaffolding Cosmos SDK chain..."
 rm -rf "$TMP_DIR/lumenchain"
 ignite scaffold chain "$MODULE_PATH" --address-prefix lumen --no-module --skip-git --path "$TMP_DIR/lumenchain"
 
+# Fail before touching the checked-in chain if scaffolding did not produce a complete app.
+test -f "$TMP_DIR/lumenchain/app/app.go"
+test -f "$TMP_DIR/lumenchain/cmd/lumend/main.go"
+test -f "$TMP_DIR/lumenchain/go.mod"
+test -f "$TMP_DIR/lumenchain/go.sum"
+test -d "$TMP_DIR/lumenchain/proto"
+test -d "$TMP_DIR/lumenchain/x"
+
+echo "Installing generated Cosmos SDK application into repository..."
 rm -rf "$CHAIN_DIR/app" "$CHAIN_DIR/cmd" "$CHAIN_DIR/proto" "$CHAIN_DIR/x" "$CHAIN_DIR/go.mod" "$CHAIN_DIR/go.sum" "$CHAIN_DIR/config.yml" "$CHAIN_DIR/Makefile"
 cp -R "$TMP_DIR/lumenchain/app" "$CHAIN_DIR/"
 cp -R "$TMP_DIR/lumenchain/cmd" "$CHAIN_DIR/"
