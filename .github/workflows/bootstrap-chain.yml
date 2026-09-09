@@ -24,15 +24,15 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          # Keep bootstrap and normal CI on the same supported toolchain.
-          # Ignite v28 / Cosmos SDK v0.50.x does not require Go 1.25.
-          go-version: '1.24.x'
+          # Ignite v28 / Cosmos SDK v0.50.14 can resolve transitive tooling
+          # dependencies that require Go 1.25, so bootstrap uses the same
+          # toolchain generation as the current dependency graph.
+          go-version: '1.25.x'
           cache: true
           cache-dependency-path: chain/go.mod
 
       - name: Generate and verify the real Cosmos SDK application
         env:
-          GOTOOLCHAIN: local
           DO_NOT_TRACK: 'true'
         run: |
           set -euxo pipefail
@@ -47,9 +47,9 @@ jobs:
           grep -q 'cosmos-sdk' chain/go.mod
           gofmt -w chain/app chain/cmd chain/x
           cd chain
-          GOTOOLCHAIN=local go mod tidy
-          GOTOOLCHAIN=local go test ./...
-          GOTOOLCHAIN=local go build ./cmd/lumend
+          go mod tidy
+          go test ./...
+          go build ./cmd/lumend
 
       - name: Commit generated chain
         run: |
