@@ -24,9 +24,8 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          # Ignite v28 / Cosmos SDK v0.50.14 can resolve transitive tooling
-          # dependencies that require Go 1.25, so bootstrap uses the same
-          # toolchain generation as the current dependency graph.
+          # Cosmos SDK v0.50.14 currently resolves an OpenTelemetry exporter
+          # that requires Go 1.25, so bootstrap must use Go 1.25+.
           go-version: '1.25.x'
           cache: true
           cache-dependency-path: chain/go.mod
