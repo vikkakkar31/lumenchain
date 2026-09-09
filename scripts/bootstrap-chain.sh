@@ -6,7 +6,7 @@ CHAIN_DIR="$ROOT_DIR/chain"
 TMP_DIR="$(mktemp -d)"
 trap 'rm -rf "$TMP_DIR"' EXIT
 
-IGNITE_VERSION="v28.11.0"
+IGNITE_VERSION="v28.11.2"
 MODULE_PATH="github.com/vikkakkar31/lumenchain/chain"
 
 command -v go >/dev/null || { echo "Go is required" >&2; exit 1; }
@@ -14,7 +14,7 @@ command -v python3 >/dev/null || { echo "Python 3 is required" >&2; exit 1; }
 
 echo "Using $(go env GOVERSION)"
 echo "Installing Ignite CLI ${IGNITE_VERSION}..."
-go install "github.com/ignite/cli/v28/ignite@${IGNITE_VERSION}"
+go install "github.com/ignite/cli/v28/ignite/cmd/ignite@${IGNITE_VERSION}"
 export PATH="$(go env GOPATH)/bin:$PATH"
 ignite version
 
@@ -59,7 +59,7 @@ p.write_text(s)
 PY
 
 cat > .chain-generated <<'EOF'
-LumenChain chain source generated from Ignite CLI v28.11.0.
+LumenChain chain source generated from Ignite CLI v28.11.2.
 The generated application uses Cosmos SDK v0.50.x and CometBFT v0.38.x.
 EOF
 
