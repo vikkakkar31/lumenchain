@@ -1,0 +1,54 @@
+name: Bootstrap LumenChain Cosmos App
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/bootstrap-chain.sh'
+      - 'chain/**'
+      - '.github/workflows/bootstrap-chain.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  bootstrap:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23.x'
+
+      - name: Generate and verify the real Cosmos SDK application
+        run: |
+          if test -f chain/.chain-generated; then
+            echo 'Cosmos SDK application is already generated; nothing to do.'
+            exit 0
+          fi
+          bash scripts/bootstrap-chain.sh
+          test -f chain/app/app.go
+          test -f chain/cmd/lumend/main.go
+          test -f chain/go.mod
+          grep -q 'cosmos-sdk' chain/go.mod
+          gofmt -w chain/app chain/cmd chain/x
+
+      - name: Commit generated chain
+        run: |
+          if test -f chain/.chain-generated; then
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git add chain
+            if ! git diff --cached --quiet; then
+              git commit -m 'feat: generate runnable Cosmos SDK chain'
+              git push
+            else
+              echo 'No generated changes to commit.'
+            fi
+          fi
