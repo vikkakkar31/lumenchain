@@ -19,12 +19,14 @@ rm -rf "$TMP_DIR/ignite"
 git clone --depth 1 --branch "$IGNITE_VERSION" https://github.com/ignite/cli.git "$TMP_DIR/ignite"
 cd "$TMP_DIR/ignite"
 go build -o "$TMP_DIR/ignite-bin" ./ignite/cmd/ignite
-"$TMP_DIR/ignite-bin" version
+# Ignite asks for analytics consent even in CI. Explicitly decline it so the
+# bootstrap remains deterministic and non-interactive.
+printf 'n\n' | "$TMP_DIR/ignite-bin" version
 
 IGNITE="$TMP_DIR/ignite-bin"
 echo "Scaffolding Cosmos SDK chain..."
 rm -rf "$TMP_DIR/lumenchain"
-"$IGNITE" scaffold chain "$MODULE_PATH" --address-prefix lumen --no-module --skip-git --path "$TMP_DIR/lumenchain"
+printf 'n\n' | "$IGNITE" scaffold chain "$MODULE_PATH" --address-prefix lumen --no-module --skip-git --path "$TMP_DIR/lumenchain"
 
 # Fail before touching the checked-in chain if scaffolding did not produce a complete app.
 test -f "$TMP_DIR/lumenchain/app/app.go"
@@ -48,8 +50,8 @@ cp "$TMP_DIR/lumenchain/Makefile" "$CHAIN_DIR/"
 # Add the LumenChain-specific modules. Ignite wires them into app/app.go and creates
 # protobuf/module boilerplate that we can then implement incrementally.
 cd "$CHAIN_DIR"
-"$IGNITE" scaffold module participation --dep bank,staking --require-registration
-"$IGNITE" scaffold module rewards --dep bank,staking,distribution --require-registration
+printf 'n\n' | "$IGNITE" scaffold module participation --dep bank,staking --require-registration
+printf 'n\n' | "$IGNITE" scaffold module rewards --dep bank,staking,distribution --require-registration
 
 # LumenChain development defaults. These are deliberately test-only values.
 python3 - <<'PY'
