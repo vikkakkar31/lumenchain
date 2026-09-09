@@ -10,17 +10,21 @@ IGNITE_VERSION="v28.11.2"
 MODULE_PATH="github.com/vikkakkar31/lumenchain/chain"
 
 command -v go >/dev/null || { echo "Go is required" >&2; exit 1; }
+command -v git >/dev/null || { echo "Git is required" >&2; exit 1; }
 command -v python3 >/dev/null || { echo "Python 3 is required" >&2; exit 1; }
 
 echo "Using $(go env GOVERSION)"
-echo "Installing Ignite CLI ${IGNITE_VERSION}..."
-go install "github.com/ignite/cli/v28/ignite/cmd/ignite@${IGNITE_VERSION}"
-export PATH="$(go env GOPATH)/bin:$PATH"
-ignite version
+echo "Building Ignite CLI ${IGNITE_VERSION} from source..."
+rm -rf "$TMP_DIR/ignite"
+git clone --depth 1 --branch "$IGNITE_VERSION" https://github.com/ignite/cli.git "$TMP_DIR/ignite"
+cd "$TMP_DIR/ignite"
+go build -o "$TMP_DIR/ignite-bin" ./ignite/cmd/ignite
+"$TMP_DIR/ignite-bin" version
 
+IGNITE="$TMP_DIR/ignite-bin"
 echo "Scaffolding Cosmos SDK chain..."
 rm -rf "$TMP_DIR/lumenchain"
-ignite scaffold chain "$MODULE_PATH" --address-prefix lumen --no-module --skip-git --path "$TMP_DIR/lumenchain"
+"$IGNITE" scaffold chain "$MODULE_PATH" --address-prefix lumen --no-module --skip-git --path "$TMP_DIR/lumenchain"
 
 # Fail before touching the checked-in chain if scaffolding did not produce a complete app.
 test -f "$TMP_DIR/lumenchain/app/app.go"
@@ -44,8 +48,8 @@ cp "$TMP_DIR/lumenchain/Makefile" "$CHAIN_DIR/"
 # Add the LumenChain-specific modules. Ignite wires them into app/app.go and creates
 # protobuf/module boilerplate that we can then implement incrementally.
 cd "$CHAIN_DIR"
-ignite scaffold module participation --dep bank,staking --require-registration
-ignite scaffold module rewards --dep bank,staking,distribution --require-registration
+"$IGNITE" scaffold module participation --dep bank,staking --require-registration
+"$IGNITE" scaffold module rewards --dep bank,staking,distribution --require-registration
 
 # LumenChain development defaults. These are deliberately test-only values.
 python3 - <<'PY'
