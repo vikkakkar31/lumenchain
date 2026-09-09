@@ -16,25 +16,35 @@ command -v python3 >/dev/null || { echo "Python 3 is required" >&2; exit 1; }
 # Ignite v28 checks this environment variable before showing its interactive
 # analytics consent prompt. This keeps GitHub Actions fully non-interactive.
 export DO_NOT_TRACK=true
+export GOTOOLCHAIN="${GOTOOLCHAIN:-local}"
 
-echo "Using $(go env GOVERSION)"
+# Fail with a useful diagnostic instead of an opaque workflow error.
+run() {
+  echo "+ $*"
+  "$@"
+}
+
+printf 'Using %s (GOTOOLCHAIN=%s)\n' "$(go env GOVERSION)" "$GOTOOLCHAIN"
 echo "Building Ignite CLI ${IGNITE_VERSION} from source..."
 rm -rf "$TMP_DIR/ignite"
-git clone --depth 1 --branch "$IGNITE_VERSION" https://github.com/ignite/cli.git "$TMP_DIR/ignite"
+run git clone --depth 1 --branch "$IGNITE_VERSION" https://github.com/ignite/cli.git "$TMP_DIR/ignite"
 cd "$TMP_DIR/ignite"
-go build -o "$TMP_DIR/ignite-bin" ./ignite/cmd/ignite
-DO_NOT_TRACK=true "$TMP_DIR/ignite-bin" version
+run go build -o "$TMP_DIR/ignite-bin" ./ignite/cmd/ignite
+run "$TMP_DIR/ignite-bin" version
 
 IGNITE="$TMP_DIR/ignite-bin"
 echo "Scaffolding Cosmos SDK chain..."
 rm -rf "$TMP_DIR/lumenchain"
-DO_NOT_TRACK=true "$IGNITE" scaffold chain "$MODULE_PATH" --address-prefix lumen --no-module --skip-git --path "$TMP_DIR/lumenchain"
+run "$IGNITE" scaffold chain "$MODULE_PATH" --address-prefix lumen --no-module --skip-git --path "$TMP_DIR/lumenchain"
 
 # Fail before touching the checked-in chain if scaffolding did not produce a complete app.
-test -f "$TMP_DIR/lumenchain/app/app.go"
-test -f "$TMP_DIR/lumenchain/cmd/lumend/main.go"
-test -f "$TMP_DIR/lumenchain/go.mod"
-test -f "$TMP_DIR/lumenchain/go.sum"
+for required in \
+  "$TMP_DIR/lumenchain/app/app.go" \
+  "$TMP_DIR/lumenchain/cmd/lumend/main.go" \
+  "$TMP_DIR/lumenchain/go.mod" \
+  "$TMP_DIR/lumenchain/go.sum"; do
+  test -f "$required" || { echo "Missing generated file: $required" >&2; exit 1; }
+done
 test -d "$TMP_DIR/lumenchain/proto"
 test -d "$TMP_DIR/lumenchain/x"
 
@@ -52,8 +62,8 @@ cp "$TMP_DIR/lumenchain/Makefile" "$CHAIN_DIR/"
 # Add the LumenChain-specific modules. Ignite wires them into app/app.go and creates
 # protobuf/module boilerplate that we can then implement incrementally.
 cd "$CHAIN_DIR"
-DO_NOT_TRACK=true "$IGNITE" scaffold module participation --dep bank,staking --require-registration
-DO_NOT_TRACK=true "$IGNITE" scaffold module rewards --dep bank,staking,distribution --require-registration
+run "$IGNITE" scaffold module participation --dep bank,staking --require-registration
+run "$IGNITE" scaffold module rewards --dep bank,staking,distribution --require-registration
 
 # LumenChain development defaults. These are deliberately test-only values.
 python3 - <<'PY'
