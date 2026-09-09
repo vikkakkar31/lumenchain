@@ -24,7 +24,9 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.23.x'
+          go-version: '1.24.x'
+          cache: true
+          cache-dependency-path: chain/go.mod
 
       - name: Generate and verify the real Cosmos SDK application
         run: |
@@ -38,6 +40,10 @@ jobs:
           test -f chain/go.mod
           grep -q 'cosmos-sdk' chain/go.mod
           gofmt -w chain/app chain/cmd chain/x
+          cd chain
+          go mod tidy
+          go test ./...
+          go build ./cmd/lumend
 
       - name: Commit generated chain
         run: |
