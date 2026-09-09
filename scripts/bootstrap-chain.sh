@@ -13,18 +13,16 @@ command -v go >/dev/null || { echo "Go is required" >&2; exit 1; }
 command -v git >/dev/null || { echo "Git is required" >&2; exit 1; }
 command -v python3 >/dev/null || { echo "Python 3 is required" >&2; exit 1; }
 
-# Ignite v28 checks this environment variable before showing its interactive
-# analytics consent prompt. This keeps GitHub Actions fully non-interactive.
+# Keep Ignite non-interactive in CI. Do not force GOTOOLCHAIN=local: the
+# generated Cosmos dependency graph may require a newer compatible Go patch.
 export DO_NOT_TRACK=true
-export GOTOOLCHAIN="${GOTOOLCHAIN:-local}"
 
-# Fail with a useful diagnostic instead of an opaque workflow error.
 run() {
   echo "+ $*"
   "$@"
 }
 
-printf 'Using %s (GOTOOLCHAIN=%s)\n' "$(go env GOVERSION)" "$GOTOOLCHAIN"
+printf 'Using %s (GOTOOLCHAIN=%s)\n' "$(go env GOVERSION)" "$(go env GOTOOLCHAIN)"
 echo "Building Ignite CLI ${IGNITE_VERSION} from source..."
 rm -rf "$TMP_DIR/ignite"
 run git clone --depth 1 --branch "$IGNITE_VERSION" https://github.com/ignite/cli.git "$TMP_DIR/ignite"
@@ -37,7 +35,6 @@ echo "Scaffolding Cosmos SDK chain..."
 rm -rf "$TMP_DIR/lumenchain"
 run "$IGNITE" scaffold chain "$MODULE_PATH" --address-prefix lumen --no-module --skip-git --path "$TMP_DIR/lumenchain"
 
-# Fail before touching the checked-in chain if scaffolding did not produce a complete app.
 for required in \
   "$TMP_DIR/lumenchain/app/app.go" \
   "$TMP_DIR/lumenchain/cmd/lumend/main.go" \
@@ -59,13 +56,10 @@ cp "$TMP_DIR/lumenchain/go.sum" "$CHAIN_DIR/"
 cp "$TMP_DIR/lumenchain/config.yml" "$CHAIN_DIR/"
 cp "$TMP_DIR/lumenchain/Makefile" "$CHAIN_DIR/"
 
-# Add the LumenChain-specific modules. Ignite wires them into app/app.go and creates
-# protobuf/module boilerplate that we can then implement incrementally.
 cd "$CHAIN_DIR"
 run "$IGNITE" scaffold module participation --dep bank,staking --require-registration
 run "$IGNITE" scaffold module rewards --dep bank,staking,distribution --require-registration
 
-# LumenChain development defaults. These are deliberately test-only values.
 python3 - <<'PY'
 from pathlib import Path
 p = Path("config.yml")
